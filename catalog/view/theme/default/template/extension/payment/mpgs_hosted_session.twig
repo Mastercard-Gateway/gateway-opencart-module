@@ -1,0 +1,369 @@
+{#
+   Copyright (c) 2020 Mastercard
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ #}
+
+{% if error_session %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_session }}</div>
+{% else %}
+    <style id="antiClickjack">body{display:none !important;}</style>
+
+    <form class="mpgs_hosted_session form-horizontal" action="{{ form_action }}" method="post">
+        <fieldset id="payment">
+            <legend>{{ text_credit_card }}</legend>
+            {% if savedCards %}
+                <div class="radio">
+                    <ul class="saved-payment-methods">
+                        {% for card in savedCards %}
+                            <li class="saved-payment-methods-token">
+                                <input id="mpgs-payment-token-{{ card.id }}" type="radio" name="mpgs-payment-token" value="{{ card.id }}" style="width:auto;" class="mpgs-token" {% if loop.index == 1 %} checked="checked" {% endif %}>
+                                <label for="mpgs-payment-token-{{ card.id }}">{{ card.type }} {{ card.label }} {{ card.expiry }}</label>
+                            </li>
+                        {% endfor %}
+                        <li class="payment-methods-new">
+                            <input id="mpgs-payment-token-new" type="radio" name="mpgs-payment-token" value="new" style="width:auto;" class="mpgs-token">
+                            <label for="mpgs-payment-token-new">{{ text_use_new_card }}</label>
+                        </li>
+                    </ul>
+                </div>
+            {% endif %}
+            <div id="creditcard-info" style="display: none;">
+                <div class="form-group required">
+                    <label class="col-sm-2 control-label" for="mpgs-card-number">{{ entry_cc_number }}</label>
+                    <div class="col-sm-6">
+                        <input type="tel" id="mpgs-card-number" class="input-field form-control" title="{{ entry_cc_number }}" value="" tabindex="1" readonly />
+                    </div>
+                </div>
+                <div class="form-group required">
+                    <label class="col-sm-2 control-label" for="mpgs-expiry-month">{{ entry_expiry_month }}</label>
+                    <div class="col-sm-3">
+                        <input type="tel" id="mpgs-expiry-month" class="input-field form-control form-inline" title="{{ entry_expiry_month }}" value="" tabindex="2" readonly />
+                    </div>
+                </div>
+                <div class="form-group required">
+                    <label class="col-sm-2 control-label" for="mpgs-expiry-year">{{ entry_expiry_year }}</label>
+                    <div class="col-sm-3">
+                        <input type="tel" id="mpgs-expiry-year" class="input-field form-control" title="{{ entry_expiry_year }}" value="" tabindex="3" readonly />
+                    </div>
+                </div>
+                <div class="form-group required">
+                    <label class="col-sm-2 control-label" for="security-code">{{ entry_security_code }}</label>
+                    <div class="col-sm-1">
+                        <input type="tel" id="mpgs-card-cvc" class="input-field form-control" title="{{ entry_security_code }}" value="" maxlength="4" tabindex="4" readonly />
+                    </div>
+                </div>
+                {% if isSavedCardsEnabled %}
+                    <div class="save-new-method">
+                        <input id="mpgs-save-new-method" name="mpgs-save-new-method" type="checkbox" value="1">
+                        <label for="mpgs-save-new-method" style="display:inline;">{{ text_save_card }}</label>
+                    </div>
+                {% endif %}
+            </div>
+            {% if savedCards %}
+                {% for card in savedCards %}
+                    <div id="mpgs-token-cvc-{{ card.id }}" style="display: none;" class="mpgs-token-cvc">
+                        <div class="form-group required">
+                            <label class="col-sm-2 control-label" for="saved-security-code">{{ entry_security_code }}</label>
+                            <div class="col-sm-1">
+                                <input type="tel" id="mpgs-token-card-cvc-{{ card.id }}" class="input-field form-control" title="{{ entry_security_code }}" value="" maxlength="4" readonly />
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </fieldset>
+
+        <input type="hidden" name="session_id" value="" />
+        <input type="hidden" name="session_version" value="" />
+
+        <div id="hostedsession_errors" style="color: red; display: none;" class="errors"></div>
+    </form>
+    <div id="3DSUI"></div>
+    <div class="buttons">
+        <div class="pull-right">
+            <input type="submit" id="button-confirm" value="{{ button_confirm }}" class="btn btn-primary" />
+        </div>
+    </div>
+    <script type="text/javascript">
+        if (self === top) {
+            var antiClickjack = document.getElementById("antiClickjack");
+            antiClickjack.parentNode.removeChild(antiClickjack);
+        } else {
+            top.location = self.location;
+        }
+
+        function hsFieldsMap() {
+            return {
+                cardNumber: "#mpgs-card-number",
+                number: "#mpgs-card-number",
+                expiryMonth: "#mpgs-expiry-month",
+                expiryYear: "#mpgs-expiry-year",
+                securityCode: "#mpgs-card-cvc",
+            };
+        }
+
+        function hsErrorsMap() {
+            return {
+                cardNumber: "{{ error_card_number }}",
+                expiryMonth: "{{ error_expiry_year }}",
+                expiryYear: "{{ error_expiry_month }}",
+                securityCode: "{{ error_security_code }}",
+            };
+        }
+
+        (function ($) {
+            function initiateAuthentication() {
+                var txnId = '3DS-' + new Date().getTime().toString();
+
+                ThreeDS.initiateAuthentication(
+                    '{{ order_id }}',
+                    txnId,
+                    function (data) {
+                        authenticatePayer(txnId, data);
+                    }
+                );
+            }
+
+            function authenticatePayer(txnId, data) {
+                if (data && data.error) {
+                    var error = data.error;
+                    //Something bad happened, the error value will match what is returned by the Authentication API
+                    console.error("error.code : ", error.code);
+                    console.error("error.msg : ", error.msg);
+                    console.error("error.result : ", error.result);
+                    console.error("error.status : ", error.status);
+                    placeOrderFail(error);
+                } else {
+                    switch (data.gatewayRecommendation) {
+                        case "PROCEED":
+                            ThreeDS.authenticatePayer(
+                                '{{ order_id }}',
+                                txnId,
+                                displayChallengeAuth,
+                                {
+                                    fullScreenRedirect: true
+                                }
+                            );
+                            break;
+                        case "DO_NOT_PROCEED":
+                            alert('Payment declined (3DS). Please try another card.');
+                            break;
+                    }
+                }
+            }
+
+            function displayChallengeAuth(data) {
+                if (!data.error) {
+                    switch (data.gatewayRecommendation) {
+                        case 'PROCEED':
+                            document.documentElement.innerHTML = data.htmlRedirectCode;
+                            break;
+                        case "DO_NOT_PROCEED":
+                            alert('Payment declined (3DS). Please try another card.');
+                            break;
+                    }
+                } else {
+                    placeOrderFail(data.error);
+                }
+            }
+
+            function placeOrderFail (error) {
+                alert('Payment general error, please try again.');
+            }
+
+            function placeOrder(data) {
+                var form = $('form.mpgs_hosted_session');
+
+                $('input[name=session_id]', form).val(data.session.id);
+                $('input[name=session_version]', form).val(data.session.version);
+
+                var xhr = $.ajax({
+                    url: form.attr('action'),
+                    method: 'POST',
+                    data: form.serializeArray()
+                });
+
+                $.when(xhr)
+                    .done(initiateAuthentication)
+                    .fail(placeOrderFail);
+            }
+
+            ThreeDS.configure({
+                merchantId: "{{ merchant_id }}",
+                sessionId: "{{ session_id }}",
+                containerId: "3DSUI",
+                callback: function () {
+                },
+                configuration: {
+                    wsVersion: {{ ws_version }}
+                }
+            });
+
+            $(':input.mpgs-token').on('change', function () {
+                var selectedPayment = $('[name=mpgs-payment-token]:checked').val();
+                if ('new' === selectedPayment) {
+                    $('.mpgs-token-cvc').hide();
+                    $('#creditcard-info').show();
+                } else {
+                    $('#creditcard-info').hide();
+                    $('.mpgs-token-cvc').hide();
+                    $('#mpgs-token-cvc-' + selectedPayment).show();
+                }
+            });
+            var paymentSessionLoaded = {};
+
+            {% if savedCards %}
+                var tokenChoices = $('[name=mpgs-payment-token]');
+                tokenChoices.on('change', function () {
+                    var errorsContainer = document.getElementById('hostedsession_errors');
+                    errorsContainer.style.display = 'none';
+
+                    var selectedPayment = $('[name=mpgs-payment-token]:checked').val();
+                    if ('new' === selectedPayment) {
+                        initializeNewPaymentSession();
+                    } else {
+                        initializeTokenPaymentSession(selectedPayment);
+                    }
+                }).change();
+            {% else %}
+                $('#creditcard-info').show();
+                initializeNewPaymentSession();
+            {% endif %}
+
+            function initializeTokenPaymentSession(id) {
+                if (paymentSessionLoaded[id] === true) {
+                    return;
+                }
+
+                var config = {
+                    session: '{{ session_id }}',
+                    fields: {
+                        card: {
+                            securityCode: '#mpgs-token-card-cvc-' + id
+                        }
+                    },
+                    frameEmbeddingMitigation: ["javascript"],
+                    callbacks: {
+                        formSessionUpdate: function (response) {
+                            var errorsContainer = document.getElementById('hostedsession_errors');
+                            errorsContainer.innerText = '';
+                            errorsContainer.style.display = 'none';
+
+                            if (!response.status) {
+                                errorsContainer.innerText = 'Invalid response';
+                                errorsContainer.style.display = 'block';
+                                return;
+                            }
+                            if (response.status === "ok") {
+                                placeOrder(response);
+                            } else {
+                                errorsContainer.innerText = 'Unexpected status: ' + response.status + ')';
+                                errorsContainer.style.display = 'block';
+                            }
+                        }
+                    },
+                    interaction: {
+                        displayControl: {
+                            invalidFieldCharacters: 'REJECT',
+                            formatCard: 'EMBOSSED'
+                        }
+                    }
+                };
+
+                PaymentSession.configure(config, id);
+                paymentSessionLoaded[id] = true;
+            }
+
+            function initializeNewPaymentSession() {
+                if (paymentSessionLoaded['new'] === true) {
+                    return;
+                }
+
+                var config = {
+                    session: '{{ session_id }}',
+                    fields: {
+                        card: hsFieldsMap()
+                    },
+                    frameEmbeddingMitigation: ["javascript"],
+                    callbacks: {
+                        formSessionUpdate: function (response) {
+                            var fields = hsFieldsMap();
+                            for (var field in fields) {
+                                var input = document.getElementById(fields[field].substr(1));
+                                input.style['border-color'] = 'inherit';
+                            }
+
+                            var errorsContainer = document.getElementById('hostedsession_errors');
+                            errorsContainer.innerText = '';
+                            errorsContainer.style.display = 'none';
+
+                            if (!response.status) {
+                                errorsContainer.innerText = 'Invalid response';
+                                errorsContainer.style.display = 'block';
+                                return;
+                            }
+
+                            if (response.status === "fields_in_error") {
+                                if (response.errors) {
+                                    var errors = hsErrorsMap(),
+                                        message = "";
+                                    for (var field in response.errors) {
+                                        if (!response.errors.hasOwnProperty(field)) {
+                                            continue;
+                                        }
+
+                                        var input = document.getElementById(fields[field].substr(1));
+                                        input.style['border-color'] = 'red';
+
+                                        message += errors[field] + "\n";
+                                    }
+                                    errorsContainer.innerText = message;
+                                    errorsContainer.style.display = 'block';
+                                }
+                            } else if (response.status === "ok") {
+                                placeOrder(response);
+                            } else {
+                                errorsContainer.innerText = 'Unexpected status: ' + response.status + ')';
+                                errorsContainer.style.display = 'block';
+                            }
+                        }
+                    },
+                    interaction: {
+                        displayControl: {
+                            invalidFieldCharacters: 'REJECT',
+                            formatCard: 'EMBOSSED'
+                        }
+                    }
+                };
+
+                PaymentSession.configure(config, 'new');
+                paymentSessionLoaded['new'] = true;
+            }
+
+            $('#button-confirm').on('click', function () {
+                var selected = document.querySelectorAll('[name=mpgs-payment-token]:checked')[0];
+                if (selected === undefined) {
+                    // Options not displayed at all
+                    PaymentSession.updateSessionFromForm('card', undefined, 'new');
+                } else if (selected.value === 'new') {
+                    // New card options was selected
+                    PaymentSession.updateSessionFromForm('card', undefined, 'new');
+                } else {
+                    // Token
+                    PaymentSession.updateSessionFromForm('card', undefined, selected.value);
+                }
+            });
+        })(jQuery);
+    </script>
+{% endif %}

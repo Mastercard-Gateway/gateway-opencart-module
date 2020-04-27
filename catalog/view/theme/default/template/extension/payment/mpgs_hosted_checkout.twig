@@ -1,0 +1,54 @@
+{#
+   Copyright (c) 2020 Mastercard
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ #}
+
+{% if error_session %}
+    <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_session }}</div>
+{% else %}
+    <script src="{{ hosted_checkout_js }}"
+            data-complete="{{ completeCallback }}"
+            data-error="errorCallback"
+            data-cancel="{{ cancelCallback }}">
+    </script>
+    <div class="buttons">
+        <div class="pull-right">
+            <input type="submit" id="button-confirm" value="{{ button_confirm }}" class="btn btn-primary" />
+        </div>
+    </div>
+    <script type="text/javascript">
+        function errorCallback(error) {
+            let err = JSON.stringify(error);
+            console.error(err);
+            alert('Error: ' + JSON.stringify(error));
+        }
+
+        $('#button-confirm').on('click', function () {
+            $(this).button('loading');
+
+            if (typeof Checkout === 'undefined') {
+            } else {
+                Checkout.configure(
+                    {{ configured_variables }}
+                );
+
+                {% if checkout_interaction == 'modal' %}
+                    Checkout.showLightbox();
+                {% else %}
+                    Checkout.showPaymentPage();
+                {% endif %}
+            }
+        });
+    </script>
+{% endif %}
