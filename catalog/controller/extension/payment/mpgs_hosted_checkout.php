@@ -20,10 +20,14 @@
  */
 class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
 {
-    const ORDER_CAPTURED = '2';
-    const ORDER_AUTHORIZED = '1';
+    const ORDER_CAPTURED = '15';
+    const ORDER_VOIDED = '16';
+    const ORDER_CANCELLED = '7';
+    const ORDER_REFUNDED = '11';
     const ORDER_FAILED = '10';
-    const ORDER_CANCELED = '7';
+    const HEADER_WEBHOOK_SECRET = 'HTTP_X_NOTIFICATION_SECRET';
+    const HEADER_WEBHOOK_ATTEMPT = 'HTTP_X_NOTIFICATION_ATTEMPT';
+    const HEADER_WEBHOOK_ID = 'HTTP_X_NOTIFICATION_ID';
 
     protected $orderAmount = 0;
 
@@ -94,8 +98,11 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
                 $data['error_expiry_month'] = $this->language->get('error_expiry_month');
                 $data['error_expiry_year'] = $this->language->get('error_expiry_year');
                 $data['error_security_code'] = $this->language->get('error_security_code');
+                $data['error_payment_declined_3ds'] = $this->language->get('error_payment_declined_3ds');
+                $data['error_payment_general'] = $this->language->get('error_payment_general');
 
                 $data['isSavedCardsEnabled'] = $this->model_extension_payment_mpgs_hosted_checkout->isSavedCardsEnabled();
+                $data['isNotGuest'] = !isset($this->session->data['guest']) ? true : false;
             }
         }
 
@@ -122,7 +129,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
         $gatewayUri = $this->model_extension_payment_mpgs_hosted_checkout->getGatewayUri();
         $apiVersion = $this->model_extension_payment_mpgs_hosted_checkout->getApiVersion();
         $integrationModel = $this->model_extension_payment_mpgs_hosted_checkout->getIntegrationModel();
-        $apiUsername = $this->model_extension_payment_mpgs_hosted_checkout->getApiUsername();
+        $apiUsername = $this->model_extension_payment_mpgs_hosted_checkout->getMerchantId();
 
         if ($integrationModel === 'hostedsession') {
             $hostedSessionJs = $gatewayUri . 'form/version/' . $apiVersion . '/merchant/' . $apiUsername . '/session.js';
@@ -151,6 +158,10 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             'customer' => $this->getCustomer()
         ];
 
+        if (!empty($this->getShippingAddress())) {
+            $requestData = array_merge($requestData, ['shipping' => $this->getShippingAddress()]);
+        }
+
         $uri = $this->model_extension_payment_mpgs_hosted_checkout->getApiUri() . '/session';
         $response = $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('POST', $uri, $requestData);
 
@@ -162,7 +173,6 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             }
             return true;
         } elseif (!empty($response['result']) && $response['result'] === 'ERROR') {
-            //throw new Exception($response['error']['cause'] . ': ' . $response['error']['explanation']);
             throw new Exception(json_encode($response['error']));
         }
 
@@ -193,7 +203,9 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
      */
     protected function getOrder()
     {
-        $orderData['id'] = $this->getOrderPrefix($this->session->data['order_id']);
+        $orderId = $this->getOrderPrefix($this->session->data['order_id']);
+        $orderData['id'] = $orderId;
+        $orderData['reference'] = $orderId;
         $orderData['currency'] = $this->session->data['currency'];
         $orderData['description'] = 'Ordered goods';
         $orderData['notificationUrl'] = $this->url->link('extension/payment/mpgs_hosted_checkout/callback', '', true);
@@ -350,6 +362,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
     {
         $billingAddress = [];
         $paymentAddress = $this->session->data['payment_address'];
+
         if (!empty($paymentAddress['city'])) {
             $billingAddress['address']['city'] = utf8_substr($paymentAddress['city'], 0, 100);
         }
@@ -384,6 +397,71 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
     /**
      * @return array
      */
+    protected function getShippingAddress()
+    {
+        $shippingAddress = [];
+        if (isset($this->session->data['shipping_address'])) {
+            $shippingAddressData = $this->session->data['shipping_address'];
+
+            if (!empty($shippingAddressData['city'])) {
+                $shippingAddress['address']['city'] = utf8_substr($shippingAddressData['city'], 0, 100);
+            }
+
+            if (!empty($shippingAddressData['company'])) {
+                $shippingAddress['address']['company'] = $shippingAddressData['company'];
+            }
+
+            if (!empty($shippingAddressData['iso_code_3'])) {
+                $shippingAddress['address']['country'] = $shippingAddressData['iso_code_3'];
+            }
+
+            if (!empty($shippingAddressData['postcode'])) {
+                $shippingAddress['address']['postcodeZip'] = utf8_substr($shippingAddressData['postcode'], 0, 10);
+            }
+
+            if (!empty($shippingAddressData['zone'])) {
+                $shippingAddress['address']['stateProvince'] = utf8_substr($shippingAddressData['zone'], 0, 20);
+            }
+
+            if (!empty($shippingAddressData['address_1'])) {
+                $shippingAddress['address']['street'] = utf8_substr($shippingAddressData['address_1'], 0, 100);
+            }
+
+            if (!empty($shippingAddressData['address_2'])) {
+                $shippingAddress['address']['street2'] = utf8_substr($shippingAddressData['address_2'], 0, 100);
+            }
+
+            if (!empty($shippingAddressData['firstname'])) {
+                $shippingAddress['contact']['firstName'] = utf8_substr($shippingAddressData['firstname'], 0, 50);
+            }
+
+            if (!empty($shippingAddressData['lastname'])) {
+                $shippingAddress['contact']['lastName'] = utf8_substr($shippingAddressData['lastname'], 0, 50);
+            }
+
+            if ($this->customer->isLogged()) {
+                $this->load->model('account/customer');
+
+                $customerModel = $this->model_account_customer->getCustomer($this->customer->getId());
+
+                $shippingAddress['contact']['email'] = $customerModel['email'];
+                $shippingAddress['contact']['phone'] = utf8_substr($customerModel['telephone'], 0, 20);
+
+            } else {
+                $guestUser = $this->session->data['guest'];
+
+                $shippingAddress['contact']['email'] = $guestUser['email'];
+                $shippingAddress['contact']['phone'] = utf8_substr($guestUser['telephone'], 0, 20);
+
+            }
+        }
+
+        return $shippingAddress;
+    }
+
+    /**
+     * @return array
+     */
     protected function getCustomer()
     {
         $customerData = [];
@@ -413,6 +491,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
      */
     public function processHostedCheckout()
     {
+        $this->load->language('extension/payment/mpgs_hosted_checkout');
         $this->load->model('extension/payment/mpgs_hosted_checkout');
 
         $requestIndicator = $this->request->get['resultIndicator'];
@@ -421,12 +500,12 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
 
         try {
             if ($mpgsSuccessIndicator !== $requestIndicator) {
-                throw new Exception('Result indicator has mismatched.');
+                throw new Exception($this->language->get('error_indicator_mismatch'));
             }
 
             $retrievedOrder = $this->retrieveOrder($orderId);
             if ($retrievedOrder['result'] !== 'SUCCESS') {
-                throw new Exception('Payment declined.');
+                throw new Exception($this->language->get('error_payment_declined'));
             }
 
             $txn = $retrievedOrder['transaction'][0];
@@ -440,10 +519,224 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             $this->response->redirect($this->url->link('checkout/checkout', '', true));
         }
     }
-
+    
     public function callback()
     {
-        //$this->addOrderHistory('435', '11', 'Payment has been REFUNDED via Webhook Notification.');
+        $this->load->language('extension/payment/mpgs_hosted_checkout');
+        $this->load->model('extension/payment/mpgs_hosted_checkout');
+        $requestHeaders = $this->request->server;
+
+        $webhookSecret = $requestHeaders[self::HEADER_WEBHOOK_SECRET];
+        $webhookAttempt = $requestHeaders[self::HEADER_WEBHOOK_ATTEMPT];
+        $webhookId = $requestHeaders[self::HEADER_WEBHOOK_ID];
+
+        $content = file_get_contents('php://input');
+        $content = trim($content);
+
+        $parsedData = @json_decode($content, true);
+
+        $jsonError = json_last_error();
+        if ($jsonError !== JSON_ERROR_NONE) {
+            $this->model_extension_payment_mpgs_hosted_checkout->log('Could not parse response JSON, error: '. $jsonError, json_encode(['rawContent' => $content]));
+            header('HTTP/1.1 500 ' . $jsonError);
+            exit;
+        }
+
+        try {
+            if ($requestHeaders['REQUEST_METHOD'] != 'POST') {
+                throw new Exception($this->language->get('error_request_method'));
+            }
+
+            if (!$this->isSecure($requestHeaders)) {
+                throw new Exception($this->language->get('error_insecure_connection'));
+            }
+
+            if ($this->model_extension_payment_mpgs_hosted_checkout->getWebhookSecret() !== $webhookSecret) {
+                throw new Exception($this->language->get('error_secret_mismatch'));
+            }
+
+            if ($this->model_extension_payment_mpgs_hosted_checkout->getMerchantId() !== $parsedData['merchant']) {
+                throw new Exception($this->language->get('error_merchant_mismatch'));
+            }
+
+            if (!isset($parsedData['order']) || !isset($parsedData['order']['id'])) {
+                throw new Exception($this->language->get('error_invalid_order'));
+            }
+
+            if (!isset($parsedData['transaction']) || !isset($parsedData['transaction']['id'])) {
+                throw new Exception($this->language->get('error_invalid_transaction'));
+            }
+            
+        } catch (Exception $e) {
+            $errorMessage = sprintf("WebHook Exception: '%s'", $e->getMessage());
+            $this->model_extension_payment_mpgs_hosted_checkout->log($errorMessage);
+            header('HTTP/1.1 500 ' . $e->getMessage());
+            exit;
+        }
+
+        $webhookResponse = json_encode([
+            'notification_id' => $webhookId,
+            'notification_attempt' => $webhookAttempt,
+            'order.id' => $parsedData['order']['id'],
+            'transaction.id' => $parsedData['transaction']['id'],
+            'transaction.type' => $parsedData['transaction']['type'],
+            'response.gatewayCode' => $parsedData['response']['gatewayCode']
+        ]);
+        $this->model_extension_payment_mpgs_hosted_checkout->log("Webhook Response: " . $webhookResponse);
+
+        try {
+            $response = $this->retrieveTransaction($parsedData['order']['id'], $parsedData['transaction']['id']);
+
+            if (isset($response['result']) && $response['result'] == 'ERROR') {
+                $error = $this->language->get('error_payment_declined');
+                if (isset($response['error']['explanation'])) {
+                    $error = sprintf('%s: %s', $response['error']['cause'], $response['error']['explanation']);
+                }
+                throw new Exception($error);
+            }
+        } catch (Exception $e) {
+            $this->model_extension_payment_mpgs_hosted_checkout->log('Gateway Error: ' . $e->getMessage());
+            header('HTTP/1.1 500 ' . 'Gateway Error');
+            exit;
+        }
+
+        if (!$this->isApproved($response)) {
+            $this->model_extension_payment_mpgs_hosted_checkout->log(sprintf('Unexpected gateway code "%s"', $response['response']['gatewayCode']));
+            exit;
+        }
+
+        $mpgsOrderId = $response['order']['id'];
+        $prefix = trim($this->config->get('payment_mpgs_hosted_checkout_order_id_prefix'));
+        if ($prefix) {
+            $mpgsOrderId = substr($mpgsOrderId, strlen($prefix));
+        }
+
+        $this->load->model('checkout/order');
+        $order = $this->model_checkout_order->getOrder($mpgsOrderId);
+
+        if (isset($response['risk']['response'])) {
+            $risk = $response['risk']['response'];
+            switch ($risk['gatewayCode']) {
+                case 'REJECTED':
+                    if ($order['order_status_id'] != $this->config->get('payment_mpgs_hosted_checkout_risk_declined_status_id')) {
+                        $message = sprintf($this->language->get('text_risk_review_rejected'), $risk['gatewayCode'], $response['transaction']['id'], $response['transaction']['type']);
+                        $this->addOrderHistory($response['order']['reference'], $this->config->get('payment_mpgs_hosted_checkout_risk_declined_status_id'), $message);
+                    }
+                    break;
+                case 'REVIEW_REQUIRED':
+                    if (!empty($risk['review']['decision']) && in_array($risk['review']['decision'], ['NOT_REQUIRED', 'ACCEPTED'])) {
+                        $this->setOrderHistoryTransactionType($order, $response);
+                    } else {
+                        $message = sprintf($this->language->get('text_risk_review_required'), $risk['gatewayCode'], $response['transaction']['id'], $response['transaction']['type']);
+                        $this->addOrderHistory($response['order']['reference'], $this->config->get('payment_mpgs_hosted_checkout_risk_review_status_id'), $message);
+                    }
+                    break;
+                default:
+                    $this->setOrderHistoryTransactionType($order, $response);
+                    break;
+            }
+
+            $this->model_extension_payment_mpgs_hosted_checkout->log('webhook completed (200 OK)');
+            exit;
+        }
+    }
+
+    /**
+     * @param $order
+     * @param $response
+     */
+    protected function setOrderHistoryTransactionType($order, $response)
+    {
+        switch ($response['transaction']['type']) {
+            case 'AUTHORIZATION':
+            case 'AUTHORIZATION_UPDATE':
+                if ($order['order_status_id'] != $this->config->get('payment_mpgs_hosted_checkout_pending_status_id')) {
+                    $this->model_extension_payment_mpgs_hosted_checkout->log(sprintf($this->language->get('text_not_allow_authorization'), $order['order_status_id']));
+                } else {
+                    $message = sprintf($this->language->get('text_webhook_authorize_capture'), $response['transaction']['type'], $response['result'], $response['transaction']['id'], $response['transaction']['authorizationCode']);
+                    $orderStatusId = $this->config->get('payment_mpgs_hosted_checkout_approved_status_id');
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+                }
+                break;
+
+            case 'PAYMENT':
+            case 'CAPTURE':
+                if ($order['order_status_id'] != $this->config->get('payment_mpgs_hosted_checkout_approved_status_id') && $order['order_status_id'] != $this->config->get('payment_mpgs_hosted_checkout_pending_status_id')) {
+                    $this->model_extension_payment_mpgs_hosted_checkout->log(sprintf($this->language->get('text_not_allow_capture'), $order['order_status']));
+                } else {
+                    $message = sprintf($this->language->get('text_webhook_authorize_capture'), $response['transaction']['type'], $response['result'], $response['transaction']['id'], $response['transaction']['authorizationCode']);
+                    $orderStatusId = self::ORDER_CAPTURED;
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+                }
+                break;
+
+            case 'REFUND_REQUEST':
+            case 'REFUND':
+                if ($order['order_status_id'] != self::ORDER_CAPTURED) {
+                    $this->model_extension_payment_mpgs_hosted_checkout->log(sprintf($this->language->get('text_not_allow_refund'), $order['order_status']));
+                } else {
+                    $message = sprintf($this->language->get('text_webhook_refund_void'), $response['transaction']['type'], $response['result'], $response['transaction']['id']);
+                    $orderStatusId = self::ORDER_REFUNDED;
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+                }
+                break;
+
+            case 'VOID_AUTHORIZATION':
+            case 'VOID_CAPTURE':
+            case 'VOID_PAYMENT':
+            case 'VOID_REFUND':
+                if ($order['order_status_id'] != $this->config->get('payment_mpgs_hosted_checkout_approved_status_id')) {
+                    $this->model_extension_payment_mpgs_hosted_checkout->log(sprintf($this->language->get('text_not_allow_void'), $order['order_status']));
+                } else {
+                    $message = sprintf($this->language->get('text_webhook_refund_void'), $response['transaction']['type'], $response['result'], $response['transaction']['id']);
+                    $orderStatusId = self::ORDER_VOIDED;
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+                }
+                break;
+
+            case 'CANCELLED':
+                if ($order['order_status_id'] != self::ORDER_CANCELLED) {
+                    $message = sprintf($this->language->get('text_webhook_refund_void'), $response['transaction']['type'], $response['result'], $response['transaction']['id']);
+                    $orderStatusId = self::ORDER_CANCELLED;
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+
+                }
+                break;
+
+            default:
+                if ($order['order_status_id'] != self::ORDER_CANCELLED) {
+                    $orderStatusId = self::ORDER_CANCELLED;
+                    $message = sprintf($this->language->get('text_webhook_unknown'), $response['transaction']['type']);
+                    $this->addOrderHistory($order['order_id'], $orderStatusId, $message);
+                }
+                break;
+        }
+    }
+
+    /**
+     * @param $response
+     * @return bool
+     */
+    public function isApproved($response)
+    {
+        $gatewayCode = $response['response']['gatewayCode'];
+
+        if (!in_array($gatewayCode, array('APPROVED', 'APPROVED_AUTO'))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param $headers
+     * @return bool
+     */
+    protected function isSecure($headers)
+    {
+        $https = $headers['HTTPS'];
+        $serverPort = $headers['SERVER_PORT'];
+        return (!empty($https) && $https === "1") || $serverPort === "443";
     }
 
     /**
@@ -498,7 +791,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
 
         // Update Session
         $uri = $this->model_extension_payment_mpgs_hosted_checkout->getApiUri() . '/session/' . $session['session']['id'];
-        $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('PUT', $uri, [
+        $updateSessionData = [
             'order' => [
                 'amount' => $amount,
                 'currency' => $this->session->data['currency'],
@@ -516,7 +809,13 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             ],
             'billing' => $this->getBillingAddress(),
             'customer' => $this->getCustomer(),
-        ]);
+        ];
+
+        if (!empty($this->getShippingAddress())) {
+            $updateSessionData = array_merge($updateSessionData, ['shipping' => $this->getShippingAddress()]);
+        }
+
+        $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('PUT', $uri, $updateSessionData);
 
         return $session;
     }
@@ -537,7 +836,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
 
         try {
             if ($gatewayRecommendation !== 'PROCEED') {
-                throw new Exception('Payment declined (3DS). Please try another card.');
+                throw new Exception($this->language->get('error_payment_declined_3ds'));
             }
 
             $operation = 'AUTHORIZE';
@@ -546,7 +845,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             }
 
             $uri = $this->model_extension_payment_mpgs_hosted_checkout->getApiUri() . '/order/' . $orderId . '/transaction/1';
-            $response = $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('PUT', $uri, [
+            $operationData = [
                 'apiOperation' => $operation,
                 'session' => [
                     'id' => $sessionId
@@ -564,13 +863,20 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
                 'order' => array_merge([
                     'reference' => $orderId,
                     'currency' => $this->session->data['currency'],
+                    'notificationUrl' => $this->url->link('extension/payment/mpgs_hosted_checkout/callback', '', true),
                 ], $this->getOrderItemsTaxAndTotals()),
                 'billing' => $this->getBillingAddress(),
                 'customer' => $this->getCustomer(),
-            ]);
+            ];
 
-            if (isset($response['result']) && $response['result'] == 'ERROR') {
-                $error = $this->language->get('error_payment_declined');
+            if (!empty($this->getShippingAddress())) {
+                $operationData = array_merge($operationData, ['shipping' => $this->getShippingAddress()]);
+            }
+
+            $response = $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('PUT', $uri, $operationData);
+
+            if (isset($response['result']) && ($response['result'] == 'ERROR' || $response['result'] == 'FAILURE')) {
+                $error = $this->language->get('error_transaction_unsuccessful');
                 if (isset($response['error']['explanation'])) {
                     $error = sprintf('%s: %s', $response['error']['cause'], $response['error']['explanation']);
                 }
@@ -684,29 +990,30 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
 
     /**
      * Cancel callback
-     * @todo: used?
      */
     public function cancelCallback()
     {
-        $this->addOrderHistory($this->session->data['order_id'], self::ORDER_CANCELED, 'MasterCard Payment transaction has been CANCELED by customer and Payment is pending. So Order has been CANCELED.');
+        $this->addOrderHistory($this->session->data['order_id'], self::ORDER_CANCELLED, 'MasterCard Payment transaction has been CANCELLED by customer.');
         $this->response->redirect($this->url->link('checkout/cart', '', true));
     }
 
     /**
      * @param $retrievedOrder
      * @param $txn
+     * @throws Exception
      */
     protected function processOrder($retrievedOrder, $txn)
     {
         if ($retrievedOrder['status'] === 'CAPTURED') {
-            $message = sprintf('Mastercard payment CAPTURED (ID: %s, Auth Code: %s)', $txn['transaction']['id'], $txn['transaction']['authorizationCode']);
+            $message = sprintf($this->language->get('text_payment_captured'), $txn['transaction']['id'], $txn['transaction']['authorizationCode']);
             $orderStatusId = self::ORDER_CAPTURED;
         } elseif ($retrievedOrder['status'] === 'AUTHORIZED') {
-            $message = sprintf('Mastercard payment AUTHORIZED (ID: %s, Auth Code: %s)', $txn['transaction']['id'], $txn['transaction']['authorizationCode']);
-            $orderStatusId = self::ORDER_AUTHORIZED;
+            $message = sprintf($this->language->get('text_payment_authorized'), $txn['transaction']['id'], $txn['transaction']['authorizationCode']);
+            $orderStatusId = $this->config->get('payment_mpgs_hosted_checkout_approved_status_id');
+        } else {
+            throw new Exception($this->language->get('error_transaction_unsuccessful'));
         }
         $this->addOrderHistory($this->session->data['order_id'], $orderStatusId, $message);
-        //$this->addOrderHistory($retrievedOrder['id'], $orderStatusId, $message);
     }
 
     /**
@@ -735,6 +1042,21 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
     }
 
     /**
+     * @param $orderId
+     * @param $txnId
+     * @return mixed
+     */
+    protected function retrieveTransaction($orderId, $txnId)
+    {
+        $this->load->model('extension/payment/mpgs_hosted_checkout');
+
+        $uri = $this->model_extension_payment_mpgs_hosted_checkout->getApiUri() . '/order/' . $orderId . '/transaction/' . $txnId;
+
+        $response = $this->model_extension_payment_mpgs_hosted_checkout->apiRequest('GET', $uri);
+        return $response;
+    }
+
+    /**
      * @return array
      */
     public function configureHostedCheckout()
@@ -743,7 +1065,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
         $this->load->model('extension/payment/mpgs_hosted_checkout');
 
         $params = [
-            'merchant' => $this->model_extension_payment_mpgs_hosted_checkout->getApiUsername(),
+            'merchant' => $this->model_extension_payment_mpgs_hosted_checkout->getMerchantId(),
             'session' => [
                 'id' => $this->session->data['mpgs_hosted_checkout']['session']['id'],
                 'version' => $this->session->data['mpgs_hosted_checkout']['session']['version']
@@ -759,7 +1081,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
      */
     protected function getOrderPrefix($orderId)
     {
-        $prefix = trim($this->config->get('payment_mpgs_hosted_checkout_order_prefix'));
+        $prefix = trim($this->config->get('payment_mpgs_hosted_checkout_order_id_prefix'));
         if (!empty($prefix)) {
             $orderId = $prefix . $orderId;
         }

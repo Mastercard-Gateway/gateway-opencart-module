@@ -20,12 +20,12 @@
  */
 class ModelExtensionPaymentMpgsHostedCheckout extends Model
 {
-    const API_EUROPE = 'api_eu';
-    const API_ASIA = 'api_as';
     const API_AMERICA = 'api_na';
-    const API_UAT = 'api_uat';
+    const API_EUROPE = 'api_eu';
+    const API_ASIA = 'api_ap';
+    const API_MTF = 'api_mtf';
     const API_OTHER = 'api_other';
-    const MODULE_VERSION = '1.0.0';
+    const MODULE_VERSION = '1.0.1';
     const API_VERSION = '55';
     const DEBUG_LOG_FILENAME = 'mpgs_gateway.log';
     const THREEDS_API_VERSION = '1.3.0';
@@ -59,14 +59,14 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
     public function getGatewayUri()
     {
         $apiGateway = $this->config->get('payment_mpgs_hosted_checkout_api_gateway');
-        if ($apiGateway === self::API_EUROPE) {
+        if ($apiGateway === self::API_AMERICA) {
+            $gatewayUrl = 'https://na-gateway.mastercard.com/';
+        } elseif ($apiGateway === self::API_EUROPE) {
             $gatewayUrl = 'https://eu-gateway.mastercard.com/';
         } elseif ($apiGateway === self::API_ASIA) {
             $gatewayUrl = 'https://ap-gateway.mastercard.com/';
-        } elseif ($apiGateway === self::API_AMERICA) {
-            $gatewayUrl = 'https://na-gateway.mastercard.com/';
-        } elseif ($apiGateway === self::API_UAT) {
-            $gatewayUrl = 'https://secure.uat.tnspayments.com/';
+        } elseif ($apiGateway === self::API_MTF) {
+            $gatewayUrl = 'https://mtf.gateway.mastercard.com/';
         } elseif ($apiGateway === self::API_OTHER) {
             $url = $this->config->get('payment_mpgs_hosted_checkout_api_gateway_other');
             if (!empty($url)) {
@@ -85,18 +85,18 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
      */
     public function getApiUri()
     {
-        return $this->getGatewayUri() . 'api/rest/version/' . $this->getApiVersion() . '/merchant/' . $this->getApiUsername();
+        return $this->getGatewayUri() . 'api/rest/version/' . $this->getApiVersion() . '/merchant/' . $this->getMerchantId();
     }
 
     /**
      * @return mixed
      */
-    public function getApiUsername()
+    public function getMerchantId()
     {
-        if ($this->isSandboxModeEnabled()) {
-            return $this->config->get('payment_mpgs_hosted_checkout_api_sandbox_username');
+        if ($this->isTestModeEnabled()) {
+            return $this->config->get('payment_mpgs_hosted_checkout_test_merchant_id');
         } else {
-            return $this->config->get('payment_mpgs_hosted_checkout_api_username');
+            return $this->config->get('payment_mpgs_hosted_checkout_live_merchant_id');
         }
     }
 
@@ -105,10 +105,22 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
      */
     public function getApiPassword()
     {
-        if ($this->isSandboxModeEnabled()) {
-            return $this->config->get('payment_mpgs_hosted_checkout_api_sandbox_password');
+        if ($this->isTestModeEnabled()) {
+            return $this->config->get('payment_mpgs_hosted_checkout_test_api_password');
         } else {
-            return $this->config->get('payment_mpgs_hosted_checkout_api_password');
+            return $this->config->get('payment_mpgs_hosted_checkout_live_api_password');
+        }
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getWebhookSecret()
+    {
+        if ($this->isTestModeEnabled()) {
+            return $this->config->get('payment_mpgs_hosted_checkout_test_notification_secret');
+        } else {
+            return $this->config->get('payment_mpgs_hosted_checkout_live_notification_secret');
         }
     }
 
@@ -123,7 +135,7 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
     /**
      * @return mixed
      */
-    public function isSandboxModeEnabled()
+    public function isTestModeEnabled()
     {
         return $this->config->get('payment_mpgs_hosted_checkout_test');
     }
@@ -133,7 +145,7 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
      */
     public function isDebugModeEnabled()
     {
-        if ($this->isSandboxModeEnabled()) {
+        if ($this->isTestModeEnabled()) {
             return $this->config->get('payment_mpgs_hosted_checkout_debug') === '1';
         }
         return false;
@@ -152,8 +164,8 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
      */
     public function getPaymentAction()
     {
-        $paymentAction = $this->config->get('payment_mpgs_hosted_checkout_payment_action');
-        if ($paymentAction === 'authorize_capture') {
+        $paymentAction = $this->config->get('payment_mpgs_hosted_checkout_initial_transaction');
+        if ($paymentAction === 'pay') {
             return 'PURCHASE';
         } else {
             return 'AUTHORIZE';
@@ -176,7 +188,7 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
      */
     public function apiRequest($method, $uri, $data = [])
     {
-        $userId = 'merchant.' . $this->getApiUsername();
+        $userId = 'merchant.' . $this->getMerchantId();
 
         $requestLog = 'Send Request: "' . $method . ' ' . $uri . '" ';
         if (!empty($data)) {
@@ -247,7 +259,7 @@ class ModelExtensionPaymentMpgsHostedCheckout extends Model
     /**
      * @param $message
      */
-    protected function log($message)
+    public function log($message)
     {
         if ($this->isDebugModeEnabled()) {
             $this->debugLog = new Log(self::DEBUG_LOG_FILENAME);

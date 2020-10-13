@@ -18,8 +18,8 @@
 /**
  * Class ModelExtensionPaymentMpgsHostedCheckout
  */
-class ModelExtensionPaymentMpgsHostedCheckout extends Model {
-
+class ModelExtensionPaymentMpgsHostedCheckout extends Model
+{
     public function createTable()
     {
         $this->db->query("

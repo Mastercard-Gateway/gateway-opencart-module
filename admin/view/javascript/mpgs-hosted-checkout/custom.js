@@ -18,39 +18,43 @@ $(function ($) {
     'use strict';
     var mpgs_admin_config = {
         init: function () {
-            var username = $('#username-container'),
-                password = $('#password-container'),
-                sandbox_username = $('#sandbox-username-container'),
-                sandbox_password = $('#sandbox-password-container'),
+            var liveMerchantId = $('#live-merchant-container'),
+                livePassword = $('#live-password-container'),
+                liveWebhookSecret = $('#live-webhook-container'),
+                testMerchantId = $('#test-merchant-container'),
+                testPassword = $('#test-password-container'),
+                testWebhookSecret = $('#test-webhook-container'),
                 gateway_url = $('#custom-url-container'),
-                threedsecure = $('#threedsecure-container'),
                 saved_cards = $('#saved-cards-container'),
                 hc_type = $('#hc-type-container');
 
-            $('#sandbox-mode').on('change', function () {
+            $('#test-mode').on('change', function () {
                 if ($(this).val() === '1') {
-                    sandbox_username.show();
-                    sandbox_password.show();
-                    sandbox_username.addClass('required');
-                    sandbox_password.addClass('required');
+                    testMerchantId.show();
+                    testPassword.show();
+                    testWebhookSecret.show();
+                    testMerchantId.addClass('required');
+                    testPassword.addClass('required');
 
-                    // Hide Production Username & Password
-                    username.hide();
-                    password.hide();
-                    username.removeClass('required');
-                    password.removeClass('required');
+                    // Hide Live Merchant ID, Password & Webhook Secret
+                    liveMerchantId.hide();
+                    livePassword.hide();
+                    liveWebhookSecret.hide();
+                    liveMerchantId.removeClass('required');
+                    livePassword.removeClass('required');
                 } else {
-                    username.show();
-                    password.show();
-                    username.addClass('required');
-                    password.addClass('required');
+                    liveMerchantId.show();
+                    livePassword.show();
+                    liveWebhookSecret.show();
+                    liveMerchantId.addClass('required');
+                    livePassword.addClass('required');
 
-                    // Hide Sandbox Username & Password
-                    sandbox_username.hide();
-                    sandbox_password.hide();
-                    sandbox_username.removeClass('required');
-                    sandbox_password.removeClass('required');
-
+                    // Hide Test Merchant ID, Password & Webhook Secret
+                    testMerchantId.hide();
+                    testPassword.hide();
+                    testWebhookSecret.hide();
+                    testMerchantId.removeClass('required');
+                    testPassword.removeClass('required');
                 }
             }).change();
 
@@ -64,12 +68,10 @@ $(function ($) {
 
             $('#integration-model').on('change', function () {
                 if ($(this).val() === 'hostedcheckout') {
-                    threedsecure.hide();
                     saved_cards.hide();
                     hc_type.show();
                 } else {
                     hc_type.hide();
-                    threedsecure.show();
                     saved_cards.show();
                 }
             }).change();

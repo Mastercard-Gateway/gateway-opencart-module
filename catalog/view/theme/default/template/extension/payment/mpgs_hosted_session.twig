@@ -47,14 +47,14 @@
                 </div>
                 <div class="form-group required">
                     <label class="col-sm-2 control-label" for="mpgs-expiry-month">{{ entry_expiry_month }}</label>
-                    <div class="col-sm-3">
-                        <input type="tel" id="mpgs-expiry-month" class="input-field form-control form-inline" title="{{ entry_expiry_month }}" value="" tabindex="2" readonly />
+                    <div class="col-sm-1">
+                        <input type="tel" id="mpgs-expiry-month" class="input-field form-control form-inline" title="{{ entry_expiry_month }}" value="" maxlength="2" tabindex="2" readonly />
                     </div>
                 </div>
                 <div class="form-group required">
                     <label class="col-sm-2 control-label" for="mpgs-expiry-year">{{ entry_expiry_year }}</label>
-                    <div class="col-sm-3">
-                        <input type="tel" id="mpgs-expiry-year" class="input-field form-control" title="{{ entry_expiry_year }}" value="" tabindex="3" readonly />
+                    <div class="col-sm-1">
+                        <input type="tel" id="mpgs-expiry-year" class="input-field form-control" title="{{ entry_expiry_year }}" value="" maxlength="2" tabindex="3" readonly />
                     </div>
                 </div>
                 <div class="form-group required">
@@ -63,7 +63,7 @@
                         <input type="tel" id="mpgs-card-cvc" class="input-field form-control" title="{{ entry_security_code }}" value="" maxlength="4" tabindex="4" readonly />
                     </div>
                 </div>
-                {% if isSavedCardsEnabled %}
+                {% if isSavedCardsEnabled and isNotGuest %}
                     <div class="save-new-method">
                         <input id="mpgs-save-new-method" name="mpgs-save-new-method" type="checkbox" value="1">
                         <label for="mpgs-save-new-method" style="display:inline;">{{ text_save_card }}</label>
@@ -138,6 +138,7 @@
             function authenticatePayer(txnId, data) {
                 if (data && data.error) {
                     var error = data.error;
+
                     //Something bad happened, the error value will match what is returned by the Authentication API
                     console.error("error.code : ", error.code);
                     console.error("error.msg : ", error.msg);
@@ -157,7 +158,7 @@
                             );
                             break;
                         case "DO_NOT_PROCEED":
-                            alert('Payment declined (3DS). Please try another card.');
+                            alert("{{ error_payment_declined_3ds }}");
                             break;
                     }
                 }
@@ -170,7 +171,7 @@
                             document.documentElement.innerHTML = data.htmlRedirectCode;
                             break;
                         case "DO_NOT_PROCEED":
-                            alert('Payment declined (3DS). Please try another card.');
+                            alert("{{ error_payment_declined_3ds }}");
                             break;
                     }
                 } else {
@@ -179,7 +180,7 @@
             }
 
             function placeOrderFail (error) {
-                alert('Payment general error, please try again.');
+                alert("{{ error_payment_general }}");
             }
 
             function placeOrder(data) {

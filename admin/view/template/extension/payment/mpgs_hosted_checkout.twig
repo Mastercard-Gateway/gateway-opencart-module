@@ -36,6 +36,11 @@
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
             </div>
         {% endif %}
+        {% if error_credentials_validation %}
+            <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_credentials_validation }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        {% endif %}
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
@@ -50,71 +55,12 @@
                 </div>
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-mpgs-hosted-checkout" class="form-horizontal">
                     <ul class="nav nav-tabs">
-                        <li class="active"><a href="#tab-api" data-toggle="tab">{{ tab_api }}</a></li>
-                        <li><a href="#tab-general" data-toggle="tab">{{ tab_general }}</a></li>
+                        <li class="active"><a href="#tab-general" data-toggle="tab">{{ tab_general }}</a></li>
+                        <li><a href="#tab-gateway" data-toggle="tab">{{ tab_gateway }}</a></li>
                         <li><a href="#tab-additional" data-toggle="tab">{{ tab_additional }}</a></li>
                     </ul>
                     <div class="tab-content">
-                        <div class="tab-pane active" id="tab-api">
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label" for="sandbox-mode">{{ entry_test }}</label>
-                                <div class="col-sm-10">
-                                    <select name="payment_mpgs_hosted_checkout_test" id="sandbox-mode" class="form-control">
-                                        {% if payment_mpgs_hosted_checkout_test %}
-                                            <option value="1" selected="selected">{{ text_yes }}</option>
-                                            <option value="0">{{ text_no }}</option>
-                                        {% else %}
-                                            <option value="1">{{ text_yes }}</option>
-                                            <option value="0" selected="selected">{{ text_no }}</option>
-                                        {% endif %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group" id="username-container">
-                                <label class="col-sm-2 control-label" for="api-username">{{ entry_api_username }}</label>
-                                <div class="col-sm-10">
-                                    <input type="text" name="payment_mpgs_hosted_checkout_api_username" value="{{ payment_mpgs_hosted_checkout_api_username }}" id="api-username" class="form-control" />
-                                    {% if error_api_username %}
-                                        <div class="text-danger">{{ error_api_username }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="form-group" id="password-container">
-                                <label class="col-sm-2 control-label" for="api-password">{{ entry_api_password }}</label>
-                                <div class="col-sm-10">
-                                    <input type="password" name="payment_mpgs_hosted_checkout_api_password" value="{{ payment_mpgs_hosted_checkout_api_password }}" id="api-password" class="form-control" />
-                                    {% if error_api_password %}
-                                        <div class="text-danger">{{ error_api_password }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="form-group" id="sandbox-username-container">
-                                <label class="col-sm-2 control-label" for="api-sandbox-username">{{ entry_api_sandbox_username }}</label>
-                                <div class="col-sm-10">
-                                    <input type="text" name="payment_mpgs_hosted_checkout_api_sandbox_username" value="{{ payment_mpgs_hosted_checkout_api_sandbox_username }}" id="api-sandbox-username" class="form-control" />
-                                    {% if error_api_sandbox_username %}
-                                        <div class="text-danger">{{ error_api_sandbox_username }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="form-group" id="sandbox-password-container">
-                                <label class="col-sm-2 control-label" for="api-sandbox-password">{{ entry_api_sandbox_password }}</label>
-                                <div class="col-sm-10">
-                                    <input type="password" name="payment_mpgs_hosted_checkout_api_sandbox_password" value="{{ payment_mpgs_hosted_checkout_api_sandbox_password }}" id="api-sandbox-password" class="form-control" />
-                                    {% if error_api_sandbox_password %}
-                                        <div class="text-danger">{{ error_api_sandbox_password }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label" for="webhook-secret"><span data-toggle="tooltip" title="{{ help_webhook_secret }}">{{ entry_webhook_secret }}</span></label>
-                                <div class="col-sm-10">
-                                    <input type="password" name="payment_mpgs_hosted_checkout_webhook_secret" value="{{ payment_mpgs_hosted_checkout_webhook_secret }}" id="webhook-secret" class="form-control" />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane" id="tab-general">
+                        <div class="tab-pane active" id="tab-general">
                             <div class="form-group">
                                 <label class="col-sm-2 control-label" for="module-status">{{ entry_status }}</label>
                                 <div class="col-sm-10">
@@ -130,15 +76,15 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-2 control-label" for="select-payment-action">{{ entry_payment_action }}</label>
+                                <label class="col-sm-2 control-label" for="initial-transaction">{{ entry_initial_transaction }}</label>
                                 <div class="col-sm-10">
-                                    <select name="payment_mpgs_hosted_checkout_payment_action" id="select-payment-action" class="form-control">
-                                        {% if payment_mpgs_hosted_checkout_payment_action == 'authorize_capture' %}
-                                            <option value="authorize_capture" selected="selected">{{ text_sale }}</option>
+                                    <select name="payment_mpgs_hosted_checkout_initial_transaction" id="initial-transaction" class="form-control">
+                                        {% if payment_mpgs_hosted_checkout_initial_transaction == 'pay' %}
+                                            <option value="pay" selected="selected">{{ text_pay }}</option>
                                         {% else %}
-                                            <option value="authorize_capture">{{ text_sale }}</option>
+                                            <option value="pay">{{ text_pay }}</option>
                                         {% endif %}
-                                        {% if payment_mpgs_hosted_checkout_payment_action == 'authorize' %}
+                                        {% if payment_mpgs_hosted_checkout_initial_transaction == 'authorize' %}
                                             <option value="authorize" selected="selected">{{ text_authorize }}</option>
                                         {% else %}
                                             <option value="authorize">{{ text_authorize }}</option>
@@ -150,44 +96,6 @@
                                 <label class="col-sm-2 control-label" for="entry-title"><span data-toggle="tooltip" title="{{ help_title }}">{{ entry_title }}</span></label>
                                 <div class="col-sm-10">
                                     <input type="text" name="payment_mpgs_hosted_checkout_title" value="{{ payment_mpgs_hosted_checkout_title }}" id="entry-title" class="form-control" />
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label" for="select-api-gateway">{{ entry_api_gateway }}</label>
-                                <div class="col-sm-10">
-                                    <select name="payment_mpgs_hosted_checkout_api_gateway" id="select-api-gateway" class="form-control">
-                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_eu' %}
-                                            <option value="api_eu" selected="selected">{{ text_api_eu }}</option>
-                                        {% else %}
-                                            <option value="api_eu">{{ text_api_eu }}</option>
-                                        {% endif %}
-                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_as' %}
-                                            <option value="api_as" selected="selected">{{ text_api_as }}</option>
-                                        {% else %}
-                                            <option value="api_as">{{ text_api_as }}</option>
-                                        {% endif %}
-                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_na' %}
-                                            <option value="api_na" selected="selected">{{ text_api_na }}</option>
-                                        {% else %}
-                                            <option value="api_na">{{ text_api_na }}</option>
-                                        {% endif %}
-                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_uat' %}
-                                            <option value="api_uat" selected="selected">{{ text_api_uat }}</option>
-                                        {% else %}
-                                            <option value="api_uat">{{ text_api_uat }}</option>
-                                        {% endif %}
-                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_other' %}
-                                            <option value="api_other" selected="selected">{{ text_api_other }}</option>
-                                        {% else %}
-                                            <option value="api_other">{{ text_api_other }}</option>
-                                        {% endif %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group" id="custom-url-container">
-                                <label class="col-sm-2 control-label" for="api-gateway-other">{{ entry_api_gateway_other }}</label>
-                                <div class="col-sm-10">
-                                    <input type="text" name="payment_mpgs_hosted_checkout_api_gateway_other" value="{{ payment_mpgs_hosted_checkout_api_gateway_other }}" id="api-gateway-other" class="form-control" />
                                 </div>
                             </div>
                             <div class="form-group">
@@ -233,21 +141,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-2 control-label" for="order-status">{{ entry_order_status }}</label>
-                                <div class="col-sm-10">
-                                    <select name="payment_mpgs_hosted_checkout_order_status_id" id="order-status" class="form-control">
-                                        {% for order_status in order_statuses %}
-                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_order_status_id %}
-                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
-                                            {% else %}
-                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label" for="send-line-items">{{ entry_send_line_items }}</label>
+                                <label class="col-sm-2 control-label" for="send-line-items"><span data-toggle="tooltip" title="{{ help_send_line_items }}">{{ entry_send_line_items }}</span></label>
                                 <div class="col-sm-10">
                                     <select name="payment_mpgs_hosted_checkout_send_line_items" id="send-line-items" class="form-control">
                                         {% if payment_mpgs_hosted_checkout_send_line_items %}
@@ -267,6 +161,109 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="tab-pane" id="tab-gateway">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="test-mode">{{ entry_test }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_test" id="test-mode" class="form-control">
+                                        {% if payment_mpgs_hosted_checkout_test %}
+                                            <option value="1" selected="selected">{{ text_yes }}</option>
+                                            <option value="0">{{ text_no }}</option>
+                                        {% else %}
+                                            <option value="1">{{ text_yes }}</option>
+                                            <option value="0" selected="selected">{{ text_no }}</option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" id="live-merchant-container">
+                                <label class="col-sm-2 control-label" for="live-merchant-id">{{ entry_live_merchant_id }}</label>
+                                <div class="col-sm-10">
+                                    <input type="text" name="payment_mpgs_hosted_checkout_live_merchant_id" value="{{ payment_mpgs_hosted_checkout_live_merchant_id }}" id="live-merchant-id" class="form-control" />
+                                    {% if error_live_merchant_id %}
+                                        <div class="text-danger">{{ error_live_merchant_id }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="form-group" id="live-password-container">
+                                <label class="col-sm-2 control-label" for="live-api-password">{{ entry_live_api_password }}</label>
+                                <div class="col-sm-10">
+                                    <input type="password" name="payment_mpgs_hosted_checkout_live_api_password" value="{{ payment_mpgs_hosted_checkout_live_api_password }}" id="live-api-password" class="form-control" />
+                                    {% if error_live_api_password %}
+                                        <div class="text-danger">{{ error_live_api_password }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-group" id="test-merchant-container">
+                                <label class="col-sm-2 control-label" for="test-merchant-id">{{ entry_test_merchant_id }}</label>
+                                <div class="col-sm-10">
+                                    <input type="text" name="payment_mpgs_hosted_checkout_test_merchant_id" value="{{ payment_mpgs_hosted_checkout_test_merchant_id }}" id="test-merchant-id" class="form-control" />
+                                    {% if error_test_merchant_id %}
+                                        <div class="text-danger">{{ error_test_merchant_id }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-group" id="test-password-container">
+                                <label class="col-sm-2 control-label" for="test-api-password">{{ entry_test_api_password }}</label>
+                                <div class="col-sm-10">
+                                    <input type="password" name="payment_mpgs_hosted_checkout_test_api_password" value="{{ payment_mpgs_hosted_checkout_test_api_password }}" id="test-api-password" class="form-control" />
+                                    {% if error_test_api_password %}
+                                        <div class="text-danger">{{ error_test_api_password }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="form-group" id="live-webhook-container">
+                                <label class="col-sm-2 control-label" for="live-notification-secret"><span data-toggle="tooltip" title="{{ help_live_notification_secret }}">{{ entry_live_notification_secret }}</span></label>
+                                <div class="col-sm-10">
+                                    <input type="password" name="payment_mpgs_hosted_checkout_live_notification_secret" value="{{ payment_mpgs_hosted_checkout_live_notification_secret }}" id="live-notification-secret" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="form-group" id="test-webhook-container">
+                                <label class="col-sm-2 control-label" for="test-notification-secret"><span data-toggle="tooltip" title="{{ help_test_notification_secret }}">{{ entry_test_notification_secret }}</span></label>
+                                <div class="col-sm-10">
+                                    <input type="password" name="payment_mpgs_hosted_checkout_test_notification_secret" value="{{ payment_mpgs_hosted_checkout_test_notification_secret }}" id="test-notification-secret" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="select-api-gateway">{{ entry_api_gateway }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_api_gateway" id="select-api-gateway" class="form-control">
+                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_na' %}
+                                            <option value="api_na" selected="selected">{{ text_api_na }}</option>
+                                        {% else %}
+                                            <option value="api_na">{{ text_api_na }}</option>
+                                        {% endif %}
+                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_eu' %}
+                                            <option value="api_eu" selected="selected">{{ text_api_eu }}</option>
+                                        {% else %}
+                                            <option value="api_eu">{{ text_api_eu }}</option>
+                                        {% endif %}
+                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_ap' %}
+                                            <option value="api_ap" selected="selected">{{ text_api_ap }}</option>
+                                        {% else %}
+                                            <option value="api_ap">{{ text_api_ap }}</option>
+                                        {% endif %}
+                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_mtf' %}
+                                            <option value="api_mtf" selected="selected">{{ text_api_mtf }}</option>
+                                        {% else %}
+                                            <option value="api_mtf">{{ text_api_mtf }}</option>
+                                        {% endif %}
+                                        {% if payment_mpgs_hosted_checkout_api_gateway == 'api_other' %}
+                                            <option value="api_other" selected="selected">{{ text_api_other }}</option>
+                                        {% else %}
+                                            <option value="api_other">{{ text_api_other }}</option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" id="custom-url-container">
+                                <label class="col-sm-2 control-label" for="api-gateway-other">{{ entry_api_gateway_other }}</label>
+                                <div class="col-sm-10">
+                                    <input type="text" name="payment_mpgs_hosted_checkout_api_gateway_other" value="{{ payment_mpgs_hosted_checkout_api_gateway_other }}" id="api-gateway-other" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
                         <div class="tab-pane" id="tab-additional">
                             <div class="form-group">
                                 <label class="col-sm-2 control-label" for="input-debug"><span data-toggle="tooltip" title="{{ help_debug_mode }}">{{ entry_debug }}</span></label>
@@ -283,9 +280,79 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="col-sm-2 control-label" for="order-prefix"><span data-toggle="tooltip" title="{{ help_order_prefix }}">{{ entry_order_prefix }}</span></label>
+                                <label class="col-sm-2 control-label" for="order-id-prefix"><span data-toggle="tooltip" title="{{ help_order_id_prefix }}">{{ entry_order_id_prefix }}</span></label>
                                 <div class="col-sm-10">
-                                    <input type="text" name="payment_mpgs_hosted_checkout_order_prefix" value="{{ payment_mpgs_hosted_checkout_order_prefix }}" id="order-prefix" class="form-control" />
+                                    <input type="text" name="payment_mpgs_hosted_checkout_order_id_prefix" value="{{ payment_mpgs_hosted_checkout_order_id_prefix }}" id="order-id-prefix" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="approved-status">{{ entry_approved_status }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_approved_status_id" id="approved-status" class="form-control">
+                                        {% for order_status in order_statuses %}
+                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_approved_status_id %}
+                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                            {% else %}
+                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="declined-status">{{ entry_declined_status }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_declined_status_id" id="declined-status" class="form-control">
+                                        {% for order_status in order_statuses %}
+                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_declined_status_id %}
+                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                            {% else %}
+                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="pending-status">{{ entry_pending_status }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_pending_status_id" id="pending-status" class="form-control">
+                                        {% for order_status in order_statuses %}
+                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_pending_status_id %}
+                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                            {% else %}
+                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="risk-review-status">{{ entry_risk_review_status }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_risk_review_status_id" id="risk-review-status" class="form-control">
+                                        {% for order_status in order_statuses %}
+                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_risk_review_status_id %}
+                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                            {% else %}
+                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label" for="risk-declined-status">{{ entry_risk_declined_status }}</label>
+                                <div class="col-sm-10">
+                                    <select name="payment_mpgs_hosted_checkout_risk_declined_status_id" id="risk-declined-status" class="form-control">
+                                        {% for order_status in order_statuses %}
+                                            {% if order_status.order_status_id == payment_mpgs_hosted_checkout_risk_declined_status_id %}
+                                                <option value="{{ order_status.order_status_id }}" selected="selected">{{ order_status.name }}</option>
+                                            {% else %}
+                                                <option value="{{ order_status.order_status_id }}">{{ order_status.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>

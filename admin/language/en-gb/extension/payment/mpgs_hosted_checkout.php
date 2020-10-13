@@ -16,64 +16,73 @@
  */
 
 // Heading
-$_['heading_title']					 = 'MPGS Hosted Checkout';
+$_['heading_title']					 = 'Mastercard Payment Gateway Services';
 
 // Text
 $_['text_extension']				 = 'Extensions';
-$_['text_success']				     = 'Success: You have modified MPGS Hosted Checkout details!';
-$_['text_edit']                      = 'Edit MPGS Hosted Checkout';
-$_['text_sale']                      = 'Purchase (Pay)';
-$_['text_authorize']                 = 'Authorize & Capture';
-$_['text_api_eu']                    = 'Europe';
-$_['text_api_as']                    = 'Asia Pacific';
-$_['text_api_na']                    = 'North America';
-$_['text_api_uat']                   = 'UAT';
+$_['text_success']				     = 'Success: You have modified Mastercard Payment Gateway Services details!';
+$_['text_edit']                      = 'Edit Mastercard Payment Gateway Services';
+$_['text_pay']                       = 'Purchase (Pay)';
+$_['text_authorize']                 = 'Authorise';
+$_['text_api_eu']                    = 'EU - Europe/UK/MEA';
+$_['text_api_ap']                    = 'AP - Asia/Pacific';
+$_['text_api_na']                    = 'NA - Americas';
+$_['text_api_mtf']                   = 'MTF - MTF';
 $_['text_api_other']                 = 'Custom URL';
 $_['text_redirect']                  = 'Redirect Payment Page';
 $_['text_modal']                     = 'Lightbox';
 $_['text_hostedcheckout']            = 'Hosted Checkout';
 $_['text_hostedsession']             = 'Hosted Session';
+$_['text_mpgs_hosted_checkout']      = '<a target="_BLANK" href="https://www.mastercard.com/"><img src="view/image/payment/mastercard.png" alt="Mastercard Payment Gateway Services" title="Mastercard Payment Gateway Services" style="border: 1px solid #EEEEEE;" /></a>';
 
 // Help
 $_['help_title']                     = 'This controls the title which the user sees during checkout.';
-$_['help_webhook_secret']            = 'Be sure to enable the WebHook support in your MasterCard Merchant Administration';
+$_['help_live_notification_secret']  = 'Be sure to enable the WebHook support in your MasterCard Merchant Administration';
+$_['help_test_notification_secret']  = 'Be sure to enable the WebHook support in your MasterCard Merchant Administration';
 $_['help_debug_mode']                = 'Debug logging only works with Sandbox mode. It will log all communication of Mastercard gateway into /storage/logs/mpgs_gateway.log file.';
-$_['help_order_prefix']              = 'Should be specified in case multiple integrations use the same Merchant ID';
+$_['help_order_id_prefix']           = 'Should be specified in case multiple integrations use the same Merchant ID';
+$_['help_send_line_items']           = 'Include line item details on gateway order';
 
 // Entry
-$_['entry_status']					 = 'Status';
-$_['entry_api_username']			 = 'API Username';
-$_['entry_api_password']		     = 'API Password';
-$_['entry_api_sandbox_username']     = 'API Sandbox Username';
-$_['entry_api_sandbox_password']     = 'API Sandbox Password';
-$_['entry_webhook_secret']           = 'Webhook Secret';
-$_['entry_api_gateway']              = 'Gateway';
-$_['entry_test']					 = 'Test Mode';
-$_['entry_debug']					 = 'Debug';
-$_['entry_payment_action']           = 'Payment Action';
-$_['entry_title']                    = 'Title';
-$_['entry_order_status']             = 'New Order Status';
-$_['entry_form_title']               = 'Payment Modal Title';
-$_['entry_api_gateway_other']        = 'Custom Gateway URL';
-$_['entry_sort_order']               = 'Sort Order';
-$_['entry_send_line_items']          = 'Send Line Items';
-$_['entry_hc_type']                  = 'Checkout Interaction';
-$_['entry_integration_model']        = 'Integration Model';
-$_['entry_threedsecure']             = '3D-Secure';
-$_['entry_saved_cards']              = 'Saved Cards';
-$_['entry_order_prefix']             = 'Gateway Order ID Prefix';
 $_['entry_module_version']           = 'Module Version:';
 $_['entry_api_version']              = 'API Version:';
+$_['entry_status']					 = 'Status';
+$_['entry_live_merchant_id']	     = 'Live Merchant ID';
+$_['entry_live_api_password']		 = 'Live API Password';
+$_['entry_test_merchant_id']         = 'Test Merchant ID';
+$_['entry_test_api_password']        = 'Test API Password';
+$_['entry_live_notification_secret'] = 'Live Notification Secret';
+$_['entry_test_notification_secret'] = 'Test Notification Secret';
+$_['entry_api_gateway']              = 'Gateway Instance';
+$_['entry_test']					 = 'Test Mode';
+$_['entry_debug']					 = 'Debug';
+$_['entry_initial_transaction']      = 'Initial Transaction';
+$_['entry_title']                    = 'Title';
+$_['entry_api_gateway_other']        = 'Custom Gateway URL';
+$_['entry_sort_order']               = 'Sort Order';
+$_['entry_send_line_items']          = 'Submit line item data to gateway';
+$_['entry_hc_type']                  = 'Checkout Interaction';
+$_['entry_integration_model']        = 'Integration Model';
+$_['entry_saved_cards']              = 'Saved Cards';
+$_['entry_order_id_prefix']          = 'Order ID prefix';
+$_['entry_approved_status']          = 'Approved Status';
+$_['entry_declined_status']          = 'Declined Status';
+$_['entry_pending_status']           = 'Pending Status';
+$_['entry_risk_review_status']       = 'Risk review required Status';
+$_['entry_risk_declined_status']     = 'Declined by Risk Assessment';
 
 // Tab
-$_['tab_api']				         = 'API Credentials';
 $_['tab_general']				     = 'General';
+$_['tab_gateway']				     = 'Gateway Settings';
 $_['tab_additional']				 = 'Additional Options';
 
 // Error
-$_['error_permission']	             = 'Warning: You do not have permission to modify payment MPGS Hosted Checkout!';
-$_['error_api_username']			 = 'API Username Required!';
-$_['error_api_password']			 = 'API Password Required!';
-$_['error_api_sandbox_username']	 = 'API Sandbox Username Required!';
-$_['error_api_sandbox_password']	 = 'API Sandbox Password Required!';
+$_['error_permission']	             = 'Warning: You do not have permission to modify Mastercard Payment Gateway Services!';
+$_['error_live_merchant_id']         = 'Live Merchant ID Required!';
+$_['error_live_api_password']	     = 'Live API Password Required!';
+$_['error_test_merchant_id']	     = 'Test Merchant ID Required!';
+$_['error_test_api_password']	     = 'Test API Password Required!';
 $_['error_api_gateway_other']	     = "Custom Gateway URL must be specified if Gateway is set to 'Custom URL'";
+$_['error_test_merchant_id_prefix']	 = 'Test Merchant ID must be prefixed with TEST';
+$_['error_live_merchant_id_prefix']	 = 'Live Merchant ID must not have TEST prefix';
+$_['error_credentials_validation']   = 'API credentials are not valid. Please provide valid credentials.';
