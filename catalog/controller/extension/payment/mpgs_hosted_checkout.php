@@ -840,6 +840,8 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             ini_get('session.cookie_path'),
             ini_get('session.cookie_domain')
         );
+
+        (new ControllerStartupStartup($this->registry))->index();
     }
 
     /**
