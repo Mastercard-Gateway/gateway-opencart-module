@@ -519,7 +519,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             $this->response->redirect($this->url->link('checkout/checkout', '', true));
         }
     }
-    
+
     public function callback()
     {
         $this->load->language('extension/payment/mpgs_hosted_checkout');
@@ -566,7 +566,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
             if (!isset($parsedData['transaction']) || !isset($parsedData['transaction']['id'])) {
                 throw new Exception($this->language->get('error_invalid_transaction'));
             }
-            
+
         } catch (Exception $e) {
             $errorMessage = sprintf("WebHook Exception: '%s'", $e->getMessage());
             $this->model_extension_payment_mpgs_hosted_checkout->log($errorMessage);
@@ -804,6 +804,7 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
                 'redirectResponseUrl' => str_replace('&amp;', '&',
                     $this->url->link('extension/payment/mpgs_hosted_checkout/payerAuthComplete', [
                         'session_id' => $session['session']['id'],
+                        'OCSESSID' => $this->session->getId()
                     ], true)
                 )
             ],
@@ -821,11 +822,34 @@ class ControllerExtensionPaymentMpgsHostedCheckout extends Controller
     }
 
     /**
+     * Up session from get parameter
+     *
+     * Known issue with MasterCard API
+     */
+    private function restartOCSession()
+    {
+        if (empty($this->request->get['OCSESSID'])) {
+            return;
+        }
+        $this->session->start($this->request->get['OCSESSID']);
+
+        setcookie(
+            $this->config->get('session_name'),
+            $this->session->getId(),
+            ini_get('session.cookie_lifetime'),
+            ini_get('session.cookie_path'),
+            ini_get('session.cookie_domain')
+        );
+    }
+
+    /**
      * Controller action
      * Payer returns from 3DS1 or 3DS2 auth challenge
      */
     public function payerAuthComplete()
     {
+        $this->restartOCSession();
+
         $this->load->language('extension/payment/mpgs_hosted_checkout');
         $this->load->model('extension/payment/mpgs_hosted_checkout');
 
