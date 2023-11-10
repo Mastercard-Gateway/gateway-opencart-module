@@ -1,2 +1,3 @@
 all:
-	git archive HEAD -o ./opencart-mastercard.ocmod.zip
+	@echo "Creating package: Mastercard.ocmod.zip"
+	@git archive HEAD:src --format=zip -o mastercard.ocmod.zip
